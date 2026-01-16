@@ -8,46 +8,56 @@
     <link rel="icon" type="image/png" href="icon3.png">
     <meta name="apple-mobile-web-app-title" content="ココナ！">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; background-color: #fff0f5; padding: 20px; }
-        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
+        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 400px; margin: auto; position: relative; }
         h1 { font-size: 22px; color: #ff1493; margin-bottom: 15px; }
         .next-goal { font-size: 18px; color: #e91e63; font-weight: bold; margin-bottom: 20px; background: #ffe4e1; padding: 10px; border-radius: 10px; }
         .point-display { font-size: 50px; color: #ff69b4; font-weight: bold; margin: 15px 0; }
         input { padding: 12px; border-radius: 8px; border: 1px solid #ffb6c1; width: 85%; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; }
-        button { background: #ff69b4; color: white; border: none; padding: 12px; border-radius: 25px; font-size: 18px; font-weight: bold; cursor: pointer; width: 85%; margin: 5px 0; }
+        .get-btn { background: #ff69b4; color: white; border: none; padding: 12px; border-radius: 25px; font-size: 18px; font-weight: bold; cursor: pointer; width: 85%; margin: 5px 0; }
         
+        /* お祝いメッセージ */
+        #congrats-msg { display: none; color: #ff1493; font-size: 24px; font-weight: bold; margin-top: 10px; animation: bounce 0.5s infinite alternate; }
+        @keyframes bounce { from { transform: scale(1); } to { transform: scale(1.1); } }
+
         .log { text-align: left; margin-top: 20px; }
         .month-section { margin-top: 15px; }
-        /* 月ごとのラベル（フォルダ分け風） */
         .month-title { background: #ffb6c1; color: white; padding: 5px 10px; border-radius: 5px; font-size: 14px; font-weight: bold; display: inline-block; }
-        
         .log ul { list-style: none; padding: 0; margin-top: 5px; }
         .log li { padding: 10px; border-bottom: 1px dotted #eee; cursor: pointer; font-size: 15px; color: #555; background: white; }
-        .edit-hint { font-size: 11px; color: #999; margin-bottom: 5px; }
-        .reset-btn { background: #f0f0f0; color: #999; font-size: 12px; margin-top: 30px; width: auto; padding: 5px 15px; border-radius: 10px; border: none; }
+        
+        .reset-area { margin-top: 20px; display: none; padding: 15px; background: #fff9c4; border-radius: 10px; }
+        .reset-btn { background: #f44336; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="card">
         <h1>ここなポイントカード</h1>
+        <div id="congrats-msg">🎉 10ポイント達成！おめでとう！ 🎉</div>
         <div class="next-goal" id="next-message">あと 10 ポイント！</div>
         <div class="point-display"><span id="points">0</span> pt</div>
-        <input type="text" id="memo" placeholder="なにをした？">
-        <button onclick="addPoint()">ポイントGET！</button>
+        
+        <div id="input-area">
+            <input type="text" id="memo" placeholder="なにをした？">
+            <button class="get-btn" onclick="addPoint()">ポイントGET！</button>
+        </div>
+
+        <div id="reset-area" class="reset-area">
+            <p style="margin:0 0 10px 0; color: #d32f2f; font-weight: bold;">ご褒美をあげたらリセットしてね！</p>
+            <button class="reset-btn" onclick="resetPoints()">ポイントをリセットする</button>
+        </div>
         
         <div class="log">
             <strong>🌸 がんばった記録：</strong>
-            <p class="edit-hint">（タップすると直せるよ）</p>
             <div id="log-container"></div>
         </div>
-        
-        <button class="reset-btn" onclick="resetPoints()">リセット</button>
     </div>
 
     <script>
         let currentPoints = 0;
-        let logs = []; // 各ログは {date: "2026/01/16", text: "お皿洗い", id: 12345} みたいな形式
+        let logs = [];
         const GOAL = 10;
 
         window.onload = function() {
@@ -61,16 +71,8 @@
                 logs = JSON.parse(savedLogs);
                 updateLogDisplay();
             }
-            updateGoalMessage();
+            checkGoal();
         };
-
-        function updateGoalMessage() {
-            const msgElement = document.getElementById('next-message');
-            const remaining = GOAL - (currentPoints % GOAL || (currentPoints >= GOAL ? 0 : 0)); 
-            // 簡易的に10ごとにリセット計算。実際は達成感重視で調整可能
-            const nextTarget = GOAL - (currentPoints % GOAL);
-            msgElement.innerText = currentPoints >= GOAL && currentPoints % GOAL === 0 ? "🎉 達成おめでとう！ 🎉" : "あと " + (GOAL - (currentPoints % GOAL)) + " ポイント！";
-        }
 
         function addPoint() {
             const memoInput = document.getElementById('memo');
@@ -80,26 +82,49 @@
             document.getElementById('points').innerText = currentPoints;
             
             const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth() + 1;
-            const date = now.getDate();
-            
-            const newEntry = {
+            const entry = {
                 id: Date.now(),
-                yearMonth: year + "年" + month + "月",
-                day: month + "/" + date,
+                yearMonth: now.getFullYear() + "年" + (now.getMonth() + 1) + "月",
+                day: (now.getMonth() + 1) + "/" + now.getDate(),
                 text: memoInput.value
             };
             
-            logs.unshift(newEntry);
+            logs.unshift(entry);
             saveData();
             updateLogDisplay();
-            updateGoalMessage();
             memoInput.value = "";
-            
-            if (currentPoints % GOAL === 0) {
-                alert("おめでとう！パパからご褒美だね！");
+            checkGoal();
+        }
+
+        function checkGoal() {
+            const remaining = GOAL - currentPoints;
+            const nextMsg = document.getElementById('next-message');
+            const congratsMsg = document.getElementById('congrats-msg');
+            const inputArea = document.getElementById('input-area');
+            const resetArea = document.getElementById('reset-area');
+
+            if (currentPoints >= GOAL) {
+                nextMsg.style.display = 'none';
+                congratsMsg.style.display = 'block';
+                inputArea.style.display = 'none';
+                resetArea.style.display = 'block';
+                launchConfetti(); // 紙吹雪！
+            } else {
+                nextMsg.style.display = 'block';
+                nextMsg.innerText = "あと " + remaining + " ポイント！";
+                congratsMsg.style.display = 'none';
+                inputArea.style.display = 'block';
+                resetArea.style.display = 'none';
             }
+        }
+
+        function launchConfetti() {
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#ff69b4', '#ff1493', '#fff', '#ffc0cb']
+            });
         }
 
         function editLog(id) {
@@ -115,24 +140,18 @@
         function updateLogDisplay() {
             const container = document.getElementById('log-container');
             container.innerHTML = "";
-            
-            // 月ごとにグループ化
             const groups = {};
             logs.forEach(log => {
                 if (!groups[log.yearMonth]) groups[log.yearMonth] = [];
                 groups[log.yearMonth].push(log);
             });
-
-            // 月ごとの表示を作成
             for (const month in groups) {
                 const section = document.createElement('div');
                 section.className = 'month-section';
-                
                 const title = document.createElement('div');
                 title.className = 'month-title';
                 title.innerText = month;
                 section.appendChild(title);
-                
                 const ul = document.createElement('ul');
                 groups[month].forEach(log => {
                     const li = document.createElement('li');
@@ -151,13 +170,11 @@
         }
 
         function resetPoints() {
-            if (confirm("本当にリセットしていい？（今までの記録も消えちゃうよ）")) {
+            if (confirm("ご褒美はあげたかな？ポイントを0に戻すよ！")) {
                 currentPoints = 0;
-                logs = [];
                 saveData();
-                document.getElementById('points').innerText = currentPoints;
-                updateLogDisplay();
-                updateGoalMessage();
+                document.getElementById('points').innerText = "0";
+                checkGoal();
             }
         }
     </script>
