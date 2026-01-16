@@ -11,23 +11,24 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         body { font-family: sans-serif; text-align: center; background-color: #fff0f5; padding: 20px; }
-        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 400px; margin: auto; position: relative; }
+        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
         h1 { font-size: 22px; color: #ff1493; margin-bottom: 15px; }
         .next-goal { font-size: 18px; color: #e91e63; font-weight: bold; margin-bottom: 20px; background: #ffe4e1; padding: 10px; border-radius: 10px; }
         .point-display { font-size: 50px; color: #ff69b4; font-weight: bold; margin: 15px 0; }
         input { padding: 12px; border-radius: 8px; border: 1px solid #ffb6c1; width: 85%; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; }
         .get-btn { background: #ff69b4; color: white; border: none; padding: 12px; border-radius: 25px; font-size: 18px; font-weight: bold; cursor: pointer; width: 85%; margin: 5px 0; }
-        
-        /* お祝いメッセージ */
         #congrats-msg { display: none; color: #ff1493; font-size: 24px; font-weight: bold; margin-top: 10px; animation: bounce 0.5s infinite alternate; }
         @keyframes bounce { from { transform: scale(1); } to { transform: scale(1.1); } }
-
         .log { text-align: left; margin-top: 20px; }
         .month-section { margin-top: 15px; }
         .month-title { background: #ffb6c1; color: white; padding: 5px 10px; border-radius: 5px; font-size: 14px; font-weight: bold; display: inline-block; }
         .log ul { list-style: none; padding: 0; margin-top: 5px; }
-        .log li { padding: 10px; border-bottom: 1px dotted #eee; cursor: pointer; font-size: 15px; color: #555; background: white; }
+        .log li { padding: 10px; border-bottom: 1px dotted #eee; display: flex; justify-content: space-between; align-items: center; font-size: 15px; color: #555; background: white; }
         
+        /* 削除ボタンのスタイル */
+        .del-btn { background: #eee; color: #999; border: none; border-radius: 5px; padding: 5px 10px; font-size: 12px; cursor: pointer; margin-left: 10px; }
+        .del-btn:active { background: #ffcdd2; color: #f44336; }
+
         .reset-area { margin-top: 20px; display: none; padding: 15px; background: #fff9c4; border-radius: 10px; }
         .reset-btn { background: #f44336; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
     </style>
@@ -45,8 +46,8 @@
         </div>
 
         <div id="reset-area" class="reset-area">
-            <p style="margin:0 0 10px 0; color: #d32f2f; font-weight: bold;">ご褒美をあげたらリセットしてね！</p>
-            <button class="reset-btn" onclick="resetPoints()">ポイントをリセットする</button>
+            <p style="margin:0 0 10px 0; color: #d32f2f; font-weight: bold;">パパ、リセットおねがい！</p>
+            <button class="reset-btn" onclick="resetPoints()">0に戻してあげる</button>
         </div>
         
         <div class="log">
@@ -77,10 +78,8 @@
         function addPoint() {
             const memoInput = document.getElementById('memo');
             if (memoInput.value === "") { alert("内容を入れてね！"); return; }
-            
             currentPoints++;
             document.getElementById('points').innerText = currentPoints;
-            
             const now = new Date();
             const entry = {
                 id: Date.now(),
@@ -88,7 +87,6 @@
                 day: (now.getMonth() + 1) + "/" + now.getDate(),
                 text: memoInput.value
             };
-            
             logs.unshift(entry);
             saveData();
             updateLogDisplay();
@@ -97,7 +95,6 @@
         }
 
         function checkGoal() {
-            const remaining = GOAL - currentPoints;
             const nextMsg = document.getElementById('next-message');
             const congratsMsg = document.getElementById('congrats-msg');
             const inputArea = document.getElementById('input-area');
@@ -108,10 +105,10 @@
                 congratsMsg.style.display = 'block';
                 inputArea.style.display = 'none';
                 resetArea.style.display = 'block';
-                launchConfetti(); // 紙吹雪！
+                launchConfetti();
             } else {
                 nextMsg.style.display = 'block';
-                nextMsg.innerText = "あと " + remaining + " ポイント！";
+                nextMsg.innerText = "あと " + (GOAL - currentPoints) + " ポイント！";
                 congratsMsg.style.display = 'none';
                 inputArea.style.display = 'block';
                 resetArea.style.display = 'none';
@@ -119,12 +116,7 @@
         }
 
         function launchConfetti() {
-            confetti({
-                particleCount: 150,
-                spread: 70,
-                origin: { y: 0.6 },
-                colors: ['#ff69b4', '#ff1493', '#fff', '#ffc0cb']
-            });
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#ff69b4', '#ff1493', '#fff', '#ffc0cb'] });
         }
 
         function editLog(id) {
@@ -134,6 +126,20 @@
                 logs[index].text = newText;
                 saveData();
                 updateLogDisplay();
+            }
+        }
+
+        // 個別のログを削除する機能
+        function deleteLog(id, event) {
+            event.stopPropagation(); // 親要素のクリックイベント（編集）を防ぐ
+            if (confirm("この記録を消してもいい？（ポイントも1減るよ）")) {
+                const index = logs.findIndex(l => l.id === id);
+                logs.splice(index, 1);
+                if (currentPoints > 0) currentPoints--;
+                document.getElementById('points').innerText = currentPoints;
+                saveData();
+                updateLogDisplay();
+                checkGoal();
             }
         }
 
@@ -155,8 +161,9 @@
                 const ul = document.createElement('ul');
                 groups[month].forEach(log => {
                     const li = document.createElement('li');
-                    li.innerText = "✨ " + log.day + " - " + log.text;
                     li.onclick = function() { editLog(log.id); };
+                    li.innerHTML = `<span>✨ ${log.day} - ${log.text}</span>
+                                    <button class="del-btn" onclick="deleteLog(${log.id}, event)">消す</button>`;
                     ul.appendChild(li);
                 });
                 section.appendChild(ul);
