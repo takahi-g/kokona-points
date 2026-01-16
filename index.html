@@ -3,44 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ここな専用！ポイントカード</title>
-
+    <title>ここなポイント</title>
     <link rel="apple-touch-icon" href="icon3.png">
     <link rel="icon" type="image/png" href="icon3.png">
-    <meta name="apple-mobile-web-app-title" content="ココナポイント">
+    <meta name="apple-mobile-web-app-title" content="ココナ！">
     <meta name="apple-mobile-web-app-capable" content="yes">
-
     <style>
         body { font-family: sans-serif; text-align: center; background-color: #fff0f5; padding: 20px; }
-        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
-        .point-display { font-size: 48px; color: #ff69b4; font-weight: bold; margin: 5px 0; }
-        .next-goal { font-size: 18px; color: #e91e63; font-weight: bold; margin-bottom: 20px; background: #ffe4e1; padding: 8px; border-radius: 10px; }
-        button { background: #ff69b4; color: white; border: none; padding: 12px 24px; border-radius: 20px; font-size: 18px; cursor: pointer; margin: 10px; width: 80%; transition: 0.3s; }
-        button:active { background: #ff1493; transform: scale(0.95); }
-        input { padding: 12px; border-radius: 8px; border: 1px solid #ffb6c1; width: 80%; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; }
-        .log { text-align: left; margin-top: 20px; font-size: 14px; color: #555; background: #fffafb; padding: 10px; border-radius: 10px; border: 1px solid #ffd1dc; }
-        li { margin-bottom: 5px; border-bottom: 1px dashed #ffd1dc; padding-bottom: 3px; list-style: none; }
-        .reset-btn { background: #e0e0e0; color: #666; font-size: 12px; margin-top: 30px; width: auto; padding: 5px 15px; border-radius: 5px; }
+        .card { background: white; border-radius: 20px; padding: 30px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+        h1 { font-size: 32px; color: #ff1493; margin-bottom: 20px; }
+        .next-goal { font-size: 24px; color: #e91e63; font-weight: bold; margin-bottom: 25px; background: #ffe4e1; padding: 15px; border-radius: 15px; }
+        .point-display { font-size: 80px; color: #ff69b4; font-weight: bold; margin: 20px 0; }
+        input { padding: 15px; border-radius: 10px; border: 2px solid #ffb6c1; width: 90%; margin-bottom: 15px; font-size: 20px; box-sizing: border-box; }
+        button { background: #ff69b4; color: white; border: none; padding: 20px; border-radius: 30px; font-size: 24px; font-weight: bold; cursor: pointer; width: 90%; margin: 10px 0; }
+        .log { text-align: left; margin-top: 30px; font-size: 18px; color: #555; background: #fffafb; padding: 15px; border-radius: 10px; border: 1px solid #ffd1dc; }
+        .log ul { list-style: none; padding: 0; }
+        .log li { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .log li:hover { background: #fff0f5; }
+        .edit-hint { font-size: 12px; color: #999; margin-bottom: 5px; }
+        .reset-btn { background: #e0e0e0; color: #666; font-size: 14px; margin-top: 40px; width: auto; padding: 10px 20px; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h1>ここなのポイントカード</h1>
-        <div class="next-goal" id="next-message">あと 10 ポイントで達成！</div>
-        
+        <h1>ここなポイントカード</h1>
+        <div class="next-goal" id="next-message">あと 10 ポイント！</div>
         <div class="point-display"><span id="points">0</span> pt</div>
-        <p style="font-size: 12px; color: #888;">（10ポイント貯まったら300円！）</p>
-        
-        <input type="text" id="memo" placeholder="何をお手伝いした？">
-        <br>
+        <input type="text" id="memo" placeholder="なにをした？">
         <button onclick="addPoint()">ポイントGET！</button>
         
         <div class="log">
             <strong>🌸 がんばった記録：</strong>
-            <ul id="log-list" style="padding-left: 0; margin-top: 10px;"></ul>
+            <p class="edit-hint">※文字をタップすると直せるよ！</p>
+            <ul id="log-list"></ul>
         </div>
         
-        <button class="reset-btn" onclick="resetPoints()">リセット（パパ専用）</button>
+        <button class="reset-btn" onclick="resetPoints()">リセット（パパ用）</button>
     </div>
 
     <script>
@@ -48,11 +46,9 @@
         let logs = [];
         const GOAL = 10;
 
-        // ページ読み込み時にデータを復元
         window.onload = function() {
             const savedPoints = localStorage.getItem('kokonaPoints');
             const savedLogs = localStorage.getItem('kokonaLogs');
-            
             if (savedPoints) {
                 currentPoints = parseInt(savedPoints);
                 document.getElementById('points').innerText = currentPoints;
@@ -64,67 +60,65 @@
             updateGoalMessage();
         };
 
-        // 「あと○ポイント」の表示更新
         function updateGoalMessage() {
             const msgElement = document.getElementById('next-message');
             const remaining = GOAL - currentPoints;
             if (remaining > 0) {
-                msgElement.innerText = "あと " + remaining + " ポイントで達成！";
-                msgElement.style.background = "#ffe4e1";
-                msgElement.style.color = "#e91e63";
+                msgElement.innerText = "あと " + remaining + " ポイント！";
             } else {
-                msgElement.innerText = "🎉 10ポイント達成！おめでとう！ 🎉";
-                msgElement.style.background = "#fff3b0";
-                msgElement.style.color = "#d4a017";
+                msgElement.innerText = "🎉 10ポイント達成！ 🎉";
             }
         }
 
-        // ポイント追加
         function addPoint() {
             const memoInput = document.getElementById('memo');
-            if (memoInput.value === "") {
-                alert("何をしたか入力してね！");
-                return;
-            }
-
+            if (memoInput.value === "") { alert("内容を入れてね！"); return; }
+            
             currentPoints++;
             document.getElementById('points').innerText = currentPoints;
-
+            
             const now = new Date();
-            const timeString = (now.getMonth() + 1) + "/" + now.getDate() + " " + now.getHours() + ":" + now.getMinutes();
+            const timeString = (now.getMonth() + 1) + "/" + now.getDate();
             logs.unshift(timeString + " - " + memoInput.value);
-
+            
             saveData();
             updateLogDisplay();
             updateGoalMessage();
-
             memoInput.value = "";
-
+            
             if (currentPoints === GOAL) {
-                alert("すごーい！達成！パパから300円ゲットやね！");
+                alert("おめでとう！パパから300円ゲット！");
             }
         }
 
-        // 記録の表示更新
+        // --- ここが編集機能！ ---
+        function editLog(index) {
+            const newText = prompt("内容を書きかえるよ：", logs[index]);
+            if (newText !== null && newText !== "") {
+                logs[index] = newText;
+                saveData();
+                updateLogDisplay();
+            }
+        }
+
         function updateLogDisplay() {
             const logList = document.getElementById('log-list');
             logList.innerHTML = "";
-            logs.forEach(log => {
+            logs.forEach((log, index) => {
                 const li = document.createElement('li');
                 li.innerText = "✨ " + log;
+                li.onclick = function() { editLog(index); }; // タップで編集
                 logList.appendChild(li);
             });
         }
 
-        // ブラウザにデータを保存
         function saveData() {
             localStorage.setItem('kokonaPoints', currentPoints);
             localStorage.setItem('kokonaLogs', JSON.stringify(logs));
         }
 
-        // データを消去（リセット）
         function resetPoints() {
-            if (confirm("ポイントを0に戻すよ？いいかな？")) {
+            if (confirm("リセットするよ？")) {
                 currentPoints = 0;
                 logs = [];
                 saveData();
