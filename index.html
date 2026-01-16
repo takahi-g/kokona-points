@@ -6,18 +6,23 @@
     <title>ここな専用！ポイントカード</title>
     <style>
         body { font-family: sans-serif; text-align: center; background-color: #fff0f5; padding: 20px; }
-        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .point-display { font-size: 48px; color: #ff69b4; font-weight: bold; }
-        button { background: #ff69b4; color: white; border: none; padding: 10px 20px; border-radius: 20px; font-size: 18px; cursor: pointer; margin: 10px; }
-        input { padding: 10px; border-radius: 5px; border: 1px solid #ccc; width: 80%; margin-bottom: 10px; }
-        .log { text-align: left; margin-top: 20px; font-size: 14px; color: #555; }
+        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
+        .point-display { font-size: 48px; color: #ff69b4; font-weight: bold; margin: 5px 0; }
+        .next-goal { font-size: 18px; color: #e91e63; font-weight: bold; margin-bottom: 20px; background: #ffe4e1; padding: 5px; border-radius: 10px; }
+        button { background: #ff69b4; color: white; border: none; padding: 12px 24px; border-radius: 20px; font-size: 18px; cursor: pointer; margin: 10px; width: 80%; }
+        input { padding: 10px; border-radius: 5px; border: 1px solid #ccc; width: 80%; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; }
+        .log { text-align: left; margin-top: 20px; font-size: 14px; color: #555; background: #fefefe; padding: 10px; border-radius: 10px; }
+        li { margin-bottom: 5px; border-bottom: 1px dashed #ffd1dc; padding-bottom: 3px; list-style: none; }
+        .reset-btn { background: #ccc; font-size: 12px; margin-top: 30px; width: auto; padding: 5px 10px; }
     </style>
 </head>
 <body>
     <div class="card">
         <h1>ここなのポイントカード</h1>
-        <p>10ポイントで300円！</p>
+        <div class="next-goal" id="next-message">あと 10 ポイントで達成！</div>
+        
         <div class="point-display"><span id="points">0</span> pt</div>
+        <p style="font-size: 12px; color: #888;">（10ポイント貯まったら300円！）</p>
         
         <input type="text" id="memo" placeholder="何をお手伝いした？">
         <br>
@@ -25,16 +30,45 @@
         
         <div class="log">
             <strong>がんばった記録：</strong>
-            <ul id="log-list"></ul>
+            <ul id="log-list" style="padding-left: 0;"></ul>
         </div>
+        <button class="reset-btn" onclick="resetPoints()">リセット（パパ専用）</button>
     </div>
 
     <script>
         let currentPoints = 0;
+        let logs = [];
+        const GOAL = 10;
+
+        window.onload = function() {
+            const savedPoints = localStorage.getItem('kokonaPoints');
+            const savedLogs = localStorage.getItem('kokonaLogs');
+            
+            if (savedPoints) {
+                currentPoints = parseInt(savedPoints);
+                document.getElementById('points').innerText = currentPoints;
+            }
+            if (savedLogs) {
+                logs = JSON.parse(savedLogs);
+                updateLogDisplay();
+            }
+            updateGoalMessage();
+        };
+
+        function updateGoalMessage() {
+            const msgElement = document.getElementById('next-message');
+            const remaining = GOAL - currentPoints;
+            if (remaining > 0) {
+                msgElement.innerText = "あと " + remaining + " ポイントで達成！";
+                msgElement.style.background = "#ffe4e1";
+            } else {
+                msgElement.innerText = "🎉 10ポイント達成！おめでとう！ 🎉";
+                msgElement.style.background = "#ffd700";
+            }
+        }
+
         function addPoint() {
             const memoInput = document.getElementById('memo');
-            const logList = document.getElementById('log-list');
-            
             if (memoInput.value === "") {
                 alert("何をしたか教えてね！");
                 return;
@@ -43,16 +77,44 @@
             currentPoints++;
             document.getElementById('points').innerText = currentPoints;
 
-            // ログを追加
-            const li = document.createElement('li');
-            li.innerText = memoInput.value;
-            logList.appendChild(li);
+            const now = new Date();
+            const timeString = (now.getMonth() + 1) + "/" + now.getDate() + " " + now.getHours() + ":" + now.getMinutes();
+            logs.unshift(timeString + " - " + memoInput.value); // 新しい順に表示
 
-            // 入力欄をクリア
+            saveData();
+            updateLogDisplay();
+            updateGoalMessage();
+
             memoInput.value = "";
 
-            if (currentPoints >= 10) {
-                alert("おめでとう！10ポイント達成！たかちゃんに300円もらおう！");
+            if (currentPoints === GOAL) {
+                alert("すごーい！10ポイント貯まったよ！たかちゃんに300円もらおう！");
+            }
+        }
+
+        function updateLogDisplay() {
+            const logList = document.getElementById('log-list');
+            logList.innerHTML = "";
+            logs.forEach(log => {
+                const li = document.createElement('li');
+                li.innerText = "🌸 " + log;
+                logList.appendChild(li);
+            });
+        }
+
+        function saveData() {
+            localStorage.setItem('kokonaPoints', currentPoints);
+            localStorage.setItem('kokonaLogs', JSON.stringify(logs));
+        }
+
+        function resetPoints() {
+            if (confirm("ポイントを0に戻していい？（300円あげた後に使ってね）")) {
+                currentPoints = 0;
+                logs = [];
+                saveData();
+                document.getElementById('points').innerText = currentPoints;
+                updateLogDisplay();
+                updateGoalMessage();
             }
         }
     </script>
