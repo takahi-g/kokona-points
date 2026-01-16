@@ -11,22 +11,21 @@
     <style>
         body { font-family: sans-serif; text-align: center; background-color: #fff0f5; padding: 20px; }
         .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
-        
-        /* 文字サイズを標準（普通に読みやすい大きさ）に戻したよ */
         h1 { font-size: 22px; color: #ff1493; margin-bottom: 15px; }
         .next-goal { font-size: 18px; color: #e91e63; font-weight: bold; margin-bottom: 20px; background: #ffe4e1; padding: 10px; border-radius: 10px; }
         .point-display { font-size: 50px; color: #ff69b4; font-weight: bold; margin: 15px 0; }
-        
         input { padding: 12px; border-radius: 8px; border: 1px solid #ffb6c1; width: 85%; margin-bottom: 10px; font-size: 16px; box-sizing: border-box; }
         button { background: #ff69b4; color: white; border: none; padding: 12px; border-radius: 25px; font-size: 18px; font-weight: bold; cursor: pointer; width: 85%; margin: 5px 0; }
         
-        .log { text-align: left; margin-top: 20px; font-size: 15px; color: #555; background: #fffafb; padding: 10px; border-radius: 10px; border: 1px solid #ffd1dc; }
-        .log ul { list-style: none; padding: 0; }
-        .log li { padding: 8px; border-bottom: 1px dotted #eee; cursor: pointer; }
-        .log li:hover { background: #fff0f5; }
-        .edit-hint { font-size: 11px; color: #999; margin-bottom: 5px; }
+        .log { text-align: left; margin-top: 20px; }
+        .month-section { margin-top: 15px; }
+        /* 月ごとのラベル（フォルダ分け風） */
+        .month-title { background: #ffb6c1; color: white; padding: 5px 10px; border-radius: 5px; font-size: 14px; font-weight: bold; display: inline-block; }
         
-        .reset-btn { background: #f0f0f0; color: #999; font-size: 12px; margin-top: 30px; width: auto; padding: 5px 15px; border-radius: 10px; }
+        .log ul { list-style: none; padding: 0; margin-top: 5px; }
+        .log li { padding: 10px; border-bottom: 1px dotted #eee; cursor: pointer; font-size: 15px; color: #555; background: white; }
+        .edit-hint { font-size: 11px; color: #999; margin-bottom: 5px; }
+        .reset-btn { background: #f0f0f0; color: #999; font-size: 12px; margin-top: 30px; width: auto; padding: 5px 15px; border-radius: 10px; border: none; }
     </style>
 </head>
 <body>
@@ -40,7 +39,7 @@
         <div class="log">
             <strong>🌸 がんばった記録：</strong>
             <p class="edit-hint">（タップすると直せるよ）</p>
-            <ul id="log-list"></ul>
+            <div id="log-container"></div>
         </div>
         
         <button class="reset-btn" onclick="resetPoints()">リセット</button>
@@ -48,7 +47,7 @@
 
     <script>
         let currentPoints = 0;
-        let logs = [];
+        let logs = []; // 各ログは {date: "2026/01/16", text: "お皿洗い", id: 12345} みたいな形式
         const GOAL = 10;
 
         window.onload = function() {
@@ -67,12 +66,10 @@
 
         function updateGoalMessage() {
             const msgElement = document.getElementById('next-message');
-            const remaining = GOAL - currentPoints;
-            if (remaining > 0) {
-                msgElement.innerText = "あと " + remaining + " ポイント！";
-            } else {
-                msgElement.innerText = "🎉 10ポイント達成！ 🎉";
-            }
+            const remaining = GOAL - (currentPoints % GOAL || (currentPoints >= GOAL ? 0 : 0)); 
+            // 簡易的に10ごとにリセット計算。実際は達成感重視で調整可能
+            const nextTarget = GOAL - (currentPoints % GOAL);
+            msgElement.innerText = currentPoints >= GOAL && currentPoints % GOAL === 0 ? "🎉 達成おめでとう！ 🎉" : "あと " + (GOAL - (currentPoints % GOAL)) + " ポイント！";
         }
 
         function addPoint() {
@@ -83,37 +80,69 @@
             document.getElementById('points').innerText = currentPoints;
             
             const now = new Date();
-            const timeString = (now.getMonth() + 1) + "/" + now.getDate();
-            logs.unshift(timeString + " - " + memoInput.value);
+            const year = now.getFullYear();
+            const month = now.getMonth() + 1;
+            const date = now.getDate();
             
+            const newEntry = {
+                id: Date.now(),
+                yearMonth: year + "年" + month + "月",
+                day: month + "/" + date,
+                text: memoInput.value
+            };
+            
+            logs.unshift(newEntry);
             saveData();
             updateLogDisplay();
             updateGoalMessage();
             memoInput.value = "";
             
-            if (currentPoints === GOAL) {
-                alert("おめでとう！パパから300円ゲット！");
+            if (currentPoints % GOAL === 0) {
+                alert("おめでとう！パパからご褒美だね！");
             }
         }
 
-        function editLog(index) {
-            const newText = prompt("内容をなおすよ：", logs[index]);
+        function editLog(id) {
+            const index = logs.findIndex(l => l.id === id);
+            const newText = prompt("内容をなおすよ：", logs[index].text);
             if (newText !== null && newText !== "") {
-                logs[index] = newText;
+                logs[index].text = newText;
                 saveData();
                 updateLogDisplay();
             }
         }
 
         function updateLogDisplay() {
-            const logList = document.getElementById('log-list');
-            logList.innerHTML = "";
-            logs.forEach((log, index) => {
-                const li = document.createElement('li');
-                li.innerText = "✨ " + log;
-                li.onclick = function() { editLog(index); };
-                logList.appendChild(li);
+            const container = document.getElementById('log-container');
+            container.innerHTML = "";
+            
+            // 月ごとにグループ化
+            const groups = {};
+            logs.forEach(log => {
+                if (!groups[log.yearMonth]) groups[log.yearMonth] = [];
+                groups[log.yearMonth].push(log);
             });
+
+            // 月ごとの表示を作成
+            for (const month in groups) {
+                const section = document.createElement('div');
+                section.className = 'month-section';
+                
+                const title = document.createElement('div');
+                title.className = 'month-title';
+                title.innerText = month;
+                section.appendChild(title);
+                
+                const ul = document.createElement('ul');
+                groups[month].forEach(log => {
+                    const li = document.createElement('li');
+                    li.innerText = "✨ " + log.day + " - " + log.text;
+                    li.onclick = function() { editLog(log.id); };
+                    ul.appendChild(li);
+                });
+                section.appendChild(ul);
+                container.appendChild(section);
+            }
         }
 
         function saveData() {
@@ -122,7 +151,7 @@
         }
 
         function resetPoints() {
-            if (confirm("本当にリセットしていい？")) {
+            if (confirm("本当にリセットしていい？（今までの記録も消えちゃうよ）")) {
                 currentPoints = 0;
                 logs = [];
                 saveData();
